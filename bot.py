@@ -40,7 +40,7 @@ VERIFY_TOKEN = "meu_token_seguro_1235"
 if not ACCESS_TOKEN or not PHONE_NUMBER_ID or not VERIFY_TOKEN:
     raise ValueError("❌ Configuração da API WhatsApp está incompleta!")
 
-# ✅ Função para enviar mensagens pelo WhatsApp API
+# ✅ Enviar mensagens pelo WhatsApp API
 def send_whatsapp_message(to, text):
     """ Envia uma mensagem via WhatsApp API """
     url = f"https://graph.facebook.com/v17.0/{PHONE_NUMBER_ID}/messages"
@@ -55,7 +55,7 @@ def send_whatsapp_message(to, text):
     }
 
     try:
-        response = requests.post(url, headers=headers, json=data, timeout=10)
+        response = requests.post(url, headers=headers, json=data, timeout=5)
         print(f"📩 Resposta da API WhatsApp: {response.status_code}, {response.text}")
 
         if response.status_code != 200:
@@ -66,7 +66,7 @@ def send_whatsapp_message(to, text):
         print(f"⚠️ Erro de conexão ao enviar mensagem: {str(e)}")
         return None
 
-# ✅ Função para obter resposta do ChatGPT
+# ✅ Obter resposta do ChatGPT
 def get_chatgpt_response(user_message):
     """ Usa o ChatGPT para gerar uma resposta para o usuário """
     try:
@@ -83,7 +83,7 @@ def get_chatgpt_response(user_message):
         print(f"❌ [OpenAI] Erro ao obter resposta do ChatGPT: {str(e)}")
         return "Desculpe, estou com dificuldades para responder no momento."
 
-# ✅ Webhook para validação e processamento de mensagens recebidas
+# ✅ Webhook para WhatsApp
 @app.route("/webhook", methods=["GET", "POST"])
 def webhook():
     if request.method == "GET":
@@ -148,6 +148,11 @@ def process_whatsapp_message(data):
     except Exception as e:
         print(f"❌ Erro ao processar mensagem do WhatsApp: {str(e)}")
 
+# ✅ Rota principal para testar o servidor
+@app.route("/")
+def home():
+    return jsonify({"status": "Servidor rodando no Render! 🚀"}), 200
+
 # ✅ Enviar mensagens manualmente pelo painel
 @app.route("/send-message", methods=["POST"])
 def send_message():
@@ -164,32 +169,6 @@ def send_message():
     socketio.emit("new_message", {"phone": phone, "message": message, "from_user": False})
 
     return jsonify({"status": "success"}), 200
-
-def send_whatsapp_message(to, text):
-    """ Envia uma mensagem via WhatsApp API """
-    url = f"https://graph.facebook.com/v17.0/{PHONE_NUMBER_ID}/messages"
-    headers = {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "messaging_product": "whatsapp",
-        "to": to,
-        "text": {"body": text}
-    }
-
-    try:
-        response = requests.post(url, headers=headers, json=data, timeout=5)  # ⏳ Tempo reduzido para evitar erro
-        print(f"📩 Resposta da API WhatsApp: {response.status_code}, {response.text}")
-
-        if response.status_code != 200:
-            print(f"❌ Erro ao enviar mensagem para {to}: {response.text}")
-
-        return response.json()
-    except requests.RequestException as e:
-        print(f"⚠️ Erro de conexão ao enviar mensagem: {str(e)}")
-        return None
-
 
 # ✅ Retornar todas as conversas registradas
 @app.route("/conversations", methods=["GET"])
@@ -210,10 +189,6 @@ def toggle_bot(phone):
         settings.insert_one({"phone": phone, "bot_enabled": new_status})
 
     return jsonify({"phone": phone, "bot_enabled": new_status})
-
-@app.route("/")
-def home():
-    return "Servidor rodando no Render! 🚀", 200
 
 # ✅ Inicializa o servidor no Render
 if __name__ == "__main__":
