@@ -52,7 +52,7 @@ VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
 if not ACCESS_TOKEN or not PHONE_NUMBER_ID or not VERIFY_TOKEN:
     raise ValueError("❌ Configuração da API WhatsApp está incompleta!")
 
-# ✅ Enviar mensagens pelo WhatsApp API
+# ✅ Função para enviar mensagens pelo WhatsApp API
 def send_whatsapp_message(to, text):
     """ Envia uma mensagem via WhatsApp API """
     url = f"https://graph.facebook.com/v17.0/{PHONE_NUMBER_ID}/messages"
@@ -68,20 +68,23 @@ def send_whatsapp_message(to, text):
 
     try:
         response = requests.post(url, headers=headers, json=data, timeout=5)
-        print(f"📩 Resposta da API WhatsApp: {response.status_code}, {response.text}")
+        print(f"📤 [SEND] Enviando mensagem para {to}: {text}")
+        print(f"📩 [WHATSAPP RESPONSE] Status: {response.status_code}, Resposta: {response.text}")
 
         if response.status_code != 200:
             print(f"❌ Erro ao enviar mensagem para {to}: {response.text}")
 
         return response.json()
     except requests.RequestException as e:
-        print(f"⚠️ Erro de conexão ao enviar mensagem: {str(e)}")
+        print(f"⚠️ Erro de conexão ao enviar mensagem para {to}: {str(e)}")
         return None
 
-# ✅ Obter resposta do ChatGPT
+# ✅ Função para obter resposta do ChatGPT
 def get_chatgpt_response(user_message):
     """ Usa o ChatGPT para gerar uma resposta para o usuário """
     try:
+        print(f"🤖 [CHATGPT] Pergunta: {user_message}")
+
         response = openai_client.chat.completions.create(
             model="gpt-4",
             messages=[
@@ -89,10 +92,12 @@ def get_chatgpt_response(user_message):
                 {"role": "user", "content": user_message}
             ]
         )
+
         bot_response = response.choices[0].message.content.strip()
+        print(f"✅ [CHATGPT] Resposta: {bot_response}")
         return bot_response
     except Exception as e:
-        print(f"❌ [OpenAI] Erro ao obter resposta do ChatGPT: {str(e)}")
+        print(f"❌ [CHATGPT] Erro ao obter resposta: {str(e)}")
         return "Desculpe, estou com dificuldades para responder no momento."
 
 # ✅ Webhook para WhatsApp
@@ -111,12 +116,12 @@ def webhook():
 
     elif request.method == "POST":
         data = request.get_json()
-        print(f"📩 Webhook recebeu payload: {data}")
+        print(f"📩 [WEBHOOK] Payload recebido: {data}")
 
         if not data:
             return jsonify({"status": "error", "message": "Nenhum dado recebido"}), 400
 
-        # ✅ Responde imediatamente para evitar timeout
+        # ✅ Responde imediatamente para evitar timeout e processa depois
         eventlet.spawn_n(process_whatsapp_message, data)
         return jsonify({"status": "received"}), 200
 
@@ -133,10 +138,12 @@ def process_whatsapp_message(data):
                         text = msg.get("text", {}).get("body", "")
 
                         if not sender_id or not text:
+                            print("⚠️ Mensagem recebida está vazia ou inválida.")
                             continue
 
-                        print(f"📥 Nova mensagem recebida de {sender_id}: {text}")
+                        print(f"📥 [NOVA MENSAGEM] De {sender_id}: {text}")
 
+                        # ✅ Salva no banco de dados
                         conversations.insert_one({
                             "phone": sender_id,
                             "message": text,
@@ -147,6 +154,10 @@ def process_whatsapp_message(data):
 
                         # ✅ Gera resposta do ChatGPT e envia para o usuário
                         response_text = get_chatgpt_response(text)
+                        if not response_text:
+                            print("⚠️ Resposta do ChatGPT vazia, não será enviada.")
+                            continue
+
                         send_whatsapp_message(sender_id, response_text)
 
                         conversations.insert_one({
@@ -158,50 +169,13 @@ def process_whatsapp_message(data):
                         socketio.emit("new_message", {"phone": sender_id, "message": response_text, "from_user": False})
 
     except Exception as e:
-        print(f"❌ Erro ao processar mensagem do WhatsApp: {str(e)}")
+        print(f"❌ [PROCESS MESSAGE] Erro ao processar mensagem: {str(e)}")
 
 # ✅ Rota principal para testar o servidor
 @app.route("/")
 def home():
     return jsonify({"status": "Servidor rodando no Render! 🚀"}), 200
 
-# ✅ Enviar mensagens manualmente pelo painel
-@app.route("/send-message", methods=["POST"])
-def send_message():
-    data = request.get_json()
-    phone = data.get("phone")
-    message = data.get("message")
-
-    if not phone or not message:
-        return jsonify({"status": "error", "message": "Número e mensagem são obrigatórios!"}), 400
-
-    send_whatsapp_message(phone, message)
-
-    conversations.insert_one({"phone": phone, "message": message, "from_user": False})
-    socketio.emit("new_message", {"phone": phone, "message": message, "from_user": False})
-
-    return jsonify({"status": "success"}), 200
-
-# ✅ Retornar todas as conversas registradas
-@app.route("/conversations", methods=["GET"])
-def get_conversations():
-    messages = list(conversations.find({}, {"_id": 0}))
-    return jsonify(messages)
-
-# ✅ Ativar ou desativar o bot para um número específico
-@app.route("/toggle-bot/<phone>", methods=["POST"])
-def toggle_bot(phone):
-    user_setting = settings.find_one({"phone": phone})
-
-    if user_setting:
-        new_status = not user_setting["bot_enabled"]
-        settings.update_one({"phone": phone}, {"$set": {"bot_enabled": new_status}})
-    else:
-        new_status = True
-        settings.insert_one({"phone": phone, "bot_enabled": new_status})
-
-    return jsonify({"phone": phone, "bot_enabled": new_status})
-
 # ✅ Inicializa o servidor no Render
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), debug=True)
+    socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), debug=True)
