@@ -104,45 +104,49 @@ def webhook():
         if not data:
             return jsonify({"status": "error", "message": "Nenhum dado recebido"}), 400
 
-        # ✅ Evita timeout, responde imediatamente e processa em segundo plano
+        # ✅ Responde imediatamente para evitar timeout
         eventlet.spawn_n(process_whatsapp_message, data)
         return jsonify({"status": "received"}), 200
 
 def process_whatsapp_message(data):
     """Processa a mensagem do WhatsApp em segundo plano."""
-    for entry in data.get("entry", []):
-        for change in entry.get("changes", []):
-            value = change.get("value", {})
+    try:
+        for entry in data.get("entry", []):
+            for change in entry.get("changes", []):
+                value = change.get("value", {})
 
-            if "messages" in value:
-                for msg in value["messages"]:
-                    sender_id = msg.get("from", "")
-                    text = msg.get("text", {}).get("body", "")
+                if "messages" in value:
+                    for msg in value["messages"]:
+                        sender_id = msg.get("from", "")
+                        text = msg.get("text", {}).get("body", "")
 
-                    if not sender_id or not text:
-                        continue
+                        if not sender_id or not text:
+                            continue
 
-                    print(f"📥 Nova mensagem recebida de {sender_id}: {text}")
+                        print(f"📥 Nova mensagem recebida de {sender_id}: {text}")
 
-                    conversations.insert_one({
-                        "phone": sender_id,
-                        "message": text,
-                        "from_user": True
-                    })
+                        conversations.insert_one({
+                            "phone": sender_id,
+                            "message": text,
+                            "from_user": True
+                        })
 
-                    socketio.emit("new_message", {"phone": sender_id, "message": text, "from_user": True})
+                        socketio.emit("new_message", {"phone": sender_id, "message": text, "from_user": True})
 
-                    # ✅ Gera resposta do ChatGPT e envia para o usuário
-                    response_text = get_chatgpt_response(text)
-                    send_whatsapp_message(sender_id, response_text)
+                        # ✅ Gera resposta do ChatGPT e envia para o usuário
+                        response_text = get_chatgpt_response(text)
+                        send_whatsapp_message(sender_id, response_text)
 
-                    conversations.insert_one({
-                        "phone": sender_id,
-                        "message": response_text,
-                        "from_user": False
-                    })
+                        conversations.insert_one({
+                            "phone": sender_id,
+                            "message": response_text,
+                            "from_user": False
+                        })
 
-                    socketio.emit("new_message", {"phone": sender_id, "message": response_text, "from_user": False})
+                        socketio.emit("new_message", {"phone": sender_id, "message": response_text, "from_user": False})
+
+    except Exception as e:
+        print(f"❌ Erro ao processar mensagem do WhatsApp: {str(e)}")
 
 # ✅ Enviar mensagens manualmente pelo painel
 @app.route("/send-message", methods=["POST"])
@@ -160,6 +164,32 @@ def send_message():
     socketio.emit("new_message", {"phone": phone, "message": message, "from_user": False})
 
     return jsonify({"status": "success"}), 200
+
+def send_whatsapp_message(to, text):
+    """ Envia uma mensagem via WhatsApp API """
+    url = f"https://graph.facebook.com/v17.0/{PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "text": {"body": text}
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=5)  # ⏳ Tempo reduzido para evitar erro
+        print(f"📩 Resposta da API WhatsApp: {response.status_code}, {response.text}")
+
+        if response.status_code != 200:
+            print(f"❌ Erro ao enviar mensagem para {to}: {response.text}")
+
+        return response.json()
+    except requests.RequestException as e:
+        print(f"⚠️ Erro de conexão ao enviar mensagem: {str(e)}")
+        return None
+
 
 # ✅ Retornar todas as conversas registradas
 @app.route("/conversations", methods=["GET"])
