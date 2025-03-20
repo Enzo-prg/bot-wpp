@@ -37,6 +37,18 @@ ACCESS_TOKEN = "EAAOPTZBTiXGcBOyJn6LWnLDUIiFRq9OMDAVwthvs6PyG0xA3TdY0wZA37riLD8y
 PHONE_NUMBER_ID = "526229427249979"
 VERIFY_TOKEN = "meu_token_seguro_1235"
 
+# 🔹 Configuração do OpenAI (ChatGPT)
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    raise ValueError("❌ OPENAI_API_KEY não foi configurada corretamente!")
+
+openai_client = OpenAI(api_key=openai_api_key)
+
+# 🔹 Configuração do WhatsApp API
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
+
 if not ACCESS_TOKEN or not PHONE_NUMBER_ID or not VERIFY_TOKEN:
     raise ValueError("❌ Configuração da API WhatsApp está incompleta!")
 
@@ -192,4 +204,4 @@ def toggle_bot(phone):
 
 # ✅ Inicializa o servidor no Render
 if __name__ == "__main__":
-    socketio.run(app, debug=True)
+    socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), debug=True)
