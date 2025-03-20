@@ -181,6 +181,10 @@ def toggle_bot(phone):
 
     return jsonify({"phone": phone, "bot_enabled": new_status})
 
+@app.route("/")
+def home():
+    return "Servidor rodando no Render! 🚀", 200
+
 # ✅ Inicializa o servidor no Render
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), debug=True)
