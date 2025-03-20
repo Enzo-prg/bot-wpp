@@ -26,16 +26,16 @@ conversations = db["conversations"]
 settings = db["settings"]
 
 # 🔹 Configuração do OpenAI (ChatGPT)
-openai_api_key = os.getenv("OPENAI_API_KEY")
+openai_api_key = "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"
 if not openai_api_key:
     raise ValueError("❌ OPENAI_API_KEY não foi configurada corretamente!")
 
 openai_client = OpenAI(api_key=openai_api_key)
 
 # 🔹 Configuração do WhatsApp API
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
-PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
-VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
+ACCESS_TOKEN = "EAAOPTZBTiXGcBOyJn6LWnLDUIiFRq9OMDAVwthvs6PyG0xA3TdY0wZA37riLD8yvOw4cicvhhb3SzXTWDBed1GdAPTAdPQ9rubsCZCaJmGMZBZAy9TEuS9ZC6eBZAANz3TZAbvqMOFPDVfClW0lCTv9n2VIpoP9k1ZANamwytMNMrALIDcG50BhIRABI3V47OwgaZBOwZDZD"
+PHONE_NUMBER_ID = "526229427249979"
+VERIFY_TOKEN = "meu_token_seguro_1235"
 
 if not ACCESS_TOKEN or not PHONE_NUMBER_ID or not VERIFY_TOKEN:
     raise ValueError("❌ Configuração da API WhatsApp está incompleta!")
