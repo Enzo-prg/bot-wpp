@@ -192,4 +192,4 @@ def toggle_bot(phone):
 
 # ✅ Inicializa o servidor no Render
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), debug=True)
+    socketio.run(app, debug=True)
