@@ -42,12 +42,12 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     raise ValueError("❌ OPENAI_API_KEY não foi configurada corretamente!")
 
-openai_client = OpenAI(api_key=openai_api_key)
+# openai_client = OpenAI(api_key=openai_api_key)
 
-# 🔹 Configuração do WhatsApp API
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
-PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
-VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
+# # 🔹 Configuração do WhatsApp API
+# ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+# PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+# VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
 
 if not ACCESS_TOKEN or not PHONE_NUMBER_ID or not VERIFY_TOKEN:
     raise ValueError("❌ Configuração da API WhatsApp está incompleta!")
